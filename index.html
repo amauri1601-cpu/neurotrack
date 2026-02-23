@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroTrack — Sistema de Acompanhamento</title>
+<!-- AlaSQL: banco SQL 100% JavaScript — sem WebAssembly — funciona no GitHub Pages -->
+<script src="https://cdn.jsdelivr.net/npm/alasql@4.3.1/dist/alasql.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1a1a2e;--ink-soft:#3d3d5c;--paper:#f7f4ef;--paper-warm:#ede9e0;--teal:#2a9d8f;--teal-dark:#1e7a6e;--teal-light:#a8d5d1;--teal-xl:#e0f5f3;--coral:#e07a5f;--coral-l:#f5d4cb;--amber:#f2a65a;--amber-l:#fce8d0;--purple:#6c63a6;--purple-l:#e0deee;--sage:#6b9080;--sage-l:#d5e7e0;--border:rgba(26,26,46,.12);--sh-sm:0 2px 8px rgba(26,26,46,.06);--sh-md:0 8px 24px rgba(26,26,46,.10);--r:16px;--r-sm:10px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--paper-warm)}::-webkit-scrollbar-thumb{background:var(--teal-light);border-radius:99px}
+.app{display:flex;min-height:100vh}
+/* SIDEBAR */
+.sidebar{width:250px;min-height:100vh;background:var(--ink);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:100;overflow-y:auto}
+.sb-logo{padding:20px 18px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo{font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-sub{font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase;margin-top:1px;font-family:'DM Sans',sans-serif}
+.pac-sel{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.pac-lbl{font-size:9px;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.pac-mini{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:8px 10px;cursor:pointer;transition:.2s}
+.pac-mini:hover{background:rgba(255,255,255,.10)}
+.pac-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700;flex-shrink:0;font-family:'Fraunces',serif}
+.pac-mini-nome{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pac-mini-info{font-size:10px;color:rgba(255,255,255,.38)}
+.sb-nav{flex:1;padding:10px 8px}
+.nav-lbl{font-size:9px;color:rgba(255,255,255,.22);text-transform:uppercase;letter-spacing:1.2px;padding:0 8px;margin:8px 0 3px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;color:rgba(255,255,255,.48);font-size:13px;font-weight:500;cursor:pointer;transition:.15s;margin-bottom:1px;position:relative;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.82)}
+.nav-item.active{background:rgba(42,157,143,.18);color:var(--teal-light)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:58%;background:var(--teal);border-radius:0 2px 2px 0}
+.nav-icon{font-size:14px;width:17px;text-align:center}
+.sb-footer{padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.u-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--teal),#52b5a8);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;font-family:'Fraunces',serif;flex-shrink:0}
+/* MAIN */
+.main{margin-left:250px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:58px;background:var(--paper);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;position:sticky;top:0;z-index:50}
+.tb-title{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:var(--ink);letter-spacing:-.3px;white-space:nowrap}
+.tb-search{flex:1;max-width:260px;position:relative}
+.tb-search input{width:100%;height:34px;background:var(--paper-warm);border:1px solid var(--border);border-radius:8px;padding:0 10px 0 32px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);outline:none;transition:.2s}
+.tb-search input:focus{border-color:var(--teal);background:#fff}
+.tb-search input::placeholder{color:rgba(26,26,46,.32)}
+.search-ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;color:rgba(26,26,46,.32)}
+#srch-drop{display:none;position:absolute;top:40px;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:9px;box-shadow:var(--sh-md);z-index:200;max-height:200px;overflow-y:auto}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:7px}
+.content{padding:22px;flex:1}
+.section{display:none}.section.active{display:block}
+/* CARDS */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh-sm)}
+.card-title{font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:-.2px;margin-bottom:2px}
+.card-sub{font-size:11px;color:var(--ink-soft);opacity:.58;margin-bottom:12px}
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+/* KPI */
+.kpi{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:flex-start;gap:11px;box-shadow:var(--sh-sm);transition:.2s}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+.kpi-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.kpi-ic.t{background:var(--teal-xl)}.kpi-ic.c{background:var(--coral-l)}.kpi-ic.a{background:var(--amber-l)}.kpi-ic.p{background:var(--purple-l)}.kpi-ic.s{background:var(--sage-l)}
+.kpi-val{font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:var(--ink);line-height:1;letter-spacing:-1px}
+.kpi-lbl{font-size:11px;color:var(--ink-soft);opacity:.62;margin-top:2px}
+/* TAGS */
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;letter-spacing:.3px}
+.tag.t{background:var(--teal-xl);color:var(--teal-dark)}.tag.c{background:var(--coral-l);color:#8b3a22}.tag.a{background:var(--amber-l);color:#7a4e00}.tag.p{background:var(--purple-l);color:#3e3770}.tag.s{background:var(--sage-l);color:#234738}.tag.k{background:rgba(26,26,46,.08);color:var(--ink-soft)}
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl thead th{font-size:10px;font-weight:600;color:rgba(26,26,46,.42);text-transform:uppercase;letter-spacing:.8px;text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl tbody td{padding:10px 12px;font-size:12px;color:var(--ink);border-bottom:1px solid rgba(26,26,46,.05);vertical-align:middle}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:rgba(42,157,143,.03)}
+/* TIMELINE */
+.tl{padding-left:16px;position:relative}
+.tl::before{content:'';position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-item{position:relative;padding-left:20px;padding-bottom:14px}
+.tl-dot{position:absolute;left:-11px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--teal);border:2px solid var(--paper);box-shadow:0 0 0 2px var(--teal-light)}
+.tl-dot.c{background:var(--coral);box-shadow:0 0 0 2px var(--coral-l)}.tl-dot.a{background:var(--amber);box-shadow:0 0 0 2px var(--amber-l)}
+.tl-date{font-size:10px;color:rgba(26,26,46,.38);margin-bottom:1px}
+.tl-body{font-size:11px;color:var(--ink-soft);line-height:1.4}
+/* PROGRESS */
+.prog{margin-bottom:11px}
+.prog-hd{display:flex;justify-content:space-between;margin-bottom:4px}
+.prog-lbl{font-size:11px;font-weight:500;color:var(--ink)}
+.prog-val{font-size:11px;font-weight:700;color:var(--teal-dark)}
+.prog-bg{height:6px;background:var(--paper-warm);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),#52b5a8);transition:width .7s ease}
+.prog-fill.c{background:linear-gradient(90deg,var(--coral),#e8957c)}.prog-fill.a{background:linear-gradient(90deg,var(--amber),#f5c07a)}.prog-fill.p{background:linear-gradient(90deg,var(--purple),#8b84c4)}
+/* ALERTS */
+.al{padding:10px 13px;border-radius:8px;display:flex;align-items:flex-start;gap:8px;font-size:12px;margin-bottom:8px;border-left:4px solid;line-height:1.5}
+.al.w{background:var(--amber-l);border-color:var(--amber);color:#7a4e00}.al.d{background:var(--coral-l);border-color:var(--coral);color:#7a2a15}.al.i{background:var(--teal-xl);border-color:var(--teal);color:#0e4d46}.al.ok{background:var(--sage-l);border-color:var(--sage);color:#234738}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.17s;white-space:nowrap}
+.btn-p{background:var(--teal);color:#fff}.btn-p:hover{background:var(--teal-dark);transform:translateY(-1px);box-shadow:0 4px 10px rgba(42,157,143,.32)}
+.btn-s{background:var(--paper-warm);color:var(--ink);border:1px solid var(--border)}.btn-s:hover{border-color:var(--teal-light);background:var(--teal-xl);color:var(--teal-dark)}
+.btn-g{background:transparent;color:var(--teal-dark)}.btn-g:hover{background:var(--teal-xl)}
+.btn-sm{padding:4px 9px;font-size:11px}
+.btn-d{background:var(--coral);color:#fff}.btn-d:hover{background:#c96248}
+/* FORMS */
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:11px;font-weight:600;color:var(--ink-soft);margin-bottom:4px;letter-spacing:.3px}
+.fi,.fsel,.fta{width:100%;padding:8px 11px;background:var(--paper-warm);border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);outline:none;transition:.2s}
+.fi:focus,.fsel:focus,.fta:focus{border-color:var(--teal);background:#fff;box-shadow:0 0 0 3px rgba(42,157,143,.09)}
+.fta{resize:vertical;min-height:65px}
+.fsel{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233d3d5c' opacity='.4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+/* SECTION HEADER */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.sec-h{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.4px}
+.sec-sub{font-size:11px;color:var(--ink-soft);opacity:.58;margin-top:1px}
+.divider{height:1px;background:var(--border);margin:13px 0}
+/* PROFILE HEADER */
+.prof-hd{background:var(--ink);border-radius:var(--r);padding:18px 22px;display:flex;align-items:center;gap:16px;margin-bottom:16px;position:relative;overflow:hidden;flex-wrap:wrap}
+.prof-hd::before{content:'';position:absolute;top:-20px;right:-20px;width:110px;height:110px;background:rgba(255,255,255,.03);border-radius:50%}
+.prof-av{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:#fff;flex-shrink:0}
+.prof-name{font-family:'Fraunces',serif;font-size:18px;font-weight:600;color:#fff;letter-spacing:-.4px}
+.prof-det{font-size:11px;color:rgba(255,255,255,.48);margin-top:2px}
+.prof-tags{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.prof-tag{font-size:9px;font-weight:600;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.78)}
+.prof-stats{margin-left:auto;display:flex;gap:18px;text-align:center}
+.ps-val{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:#fff}
+.ps-lbl{font-size:9px;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.8px}
+/* EMPTY */
+.empty{text-align:center;padding:36px 18px}
+.empty-ic{font-size:34px;margin-bottom:9px;opacity:.32}
+.empty-t{font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.empty-d{font-size:12px;color:var(--ink-soft);opacity:.58}
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(26,26,46,.55);z-index:300;backdrop-filter:blur(4px);align-items:center;justify-content:center}
+.mo.open{display:flex}
+.mo-box{background:#fff;border-radius:16px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 28px 70px rgba(26,26,46,.24);margin:14px;animation:fadeUp .28s ease}
+.mo-hd{padding:20px 22px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.mo-title{font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--ink);letter-spacing:-.3px}
+.mo-close{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--paper-warm);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mo-close:hover{background:var(--coral-l)}
+.mo-body{padding:0 22px}
+.mo-ft{padding:13px 22px 20px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);margin-top:11px;background:var(--paper);border-radius:0 0 16px 16px;position:sticky;bottom:0}
+.badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 8px;border-radius:6px;margin:3px 0 10px;display:inline-block}
+/* MED */
+.med-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(26,26,46,.05)}
+.med-item:last-child{border-bottom:none}
+.med-ic{width:30px;height:30px;border-radius:8px;background:var(--amber-l);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;z-index:600;background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:12px;font-weight:500;box-shadow:0 6px 20px rgba(26,26,46,.28);max-width:280px;display:none;pointer-events:none}
+/* DB BADGE */
+.db-badge{position:fixed;bottom:22px;left:22px;z-index:400;background:var(--ink);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.55);padding:5px 11px;border-radius:99px;font-size:10px;font-weight:600;display:flex;align-items:center;gap:5px}
+.db-dot{width:5px;height:5px;border-radius:50%;background:var(--teal);animation:pulse 2s infinite}
+/* SQL CONSOLE */
+.sql-con{background:var(--ink);border-radius:11px;padding:14px}
+.sql-in{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);border-radius:7px;padding:9px 11px;font-family:'Courier New',monospace;font-size:12px;color:#a8d5d1;min-height:75px;resize:vertical;outline:none;transition:.2s;color-scheme:dark}
+.sql-in:focus{border-color:var(--teal-light)}
+.sql-res{margin-top:9px;overflow-x:auto;max-height:280px;overflow-y:auto}
+.sql-res table{border-collapse:collapse;width:100%;font-size:11px}
+.sql-res th{background:rgba(255,255,255,.08);color:var(--teal-light);font-weight:600;padding:5px 9px;text-align:left;position:sticky;top:0;white-space:nowrap}
+.sql-res td{color:rgba(255,255,255,.72);padding:4px 9px;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.sql-res tr:hover td{background:rgba(255,255,255,.03)}
+.sql-err{color:#e07a5f;font-size:11px;font-family:monospace;margin-top:7px;padding:7px;background:rgba(224,122,95,.1);border-radius:5px}
+.sql-ok{color:var(--teal-light);font-size:11px;margin-top:7px}
+.sql-rc{font-size:10px;color:rgba(255,255,255,.32);margin-top:5px}
+/* LOADING */
+#ld{position:fixed;inset:0;background:var(--ink);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .4s}
+.ld-spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.13);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes fadeUp{from{opacity:0;transform:translateY(11px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(max-width:800px){.main{margin-left:0}.sidebar{display:none}.g4{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}.fr{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="ld">
+  <div style="font-size:38px">🧠</div>
+  <div style="font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:#fff;letter-spacing:-1px">NeuroTrack</div>
+  <div style="font-size:12px;color:rgba(255,255,255,.42)" id="ld-msg">Iniciando banco de dados…</div>
+  <div class="ld-spin"></div>
+</div>
+
+<div class="app" id="app" style="opacity:0;transition:opacity .5s">
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="logo"><div class="logo-icon">🧠</div><div>NeuroTrack<div class="logo-sub">DB Local</div></div></div>
+  </div>
+  <div class="pac-sel">
+    <div class="pac-lbl">Paciente Ativo</div>
+    <div class="pac-mini" onclick="nav('pacientes')">
+      <div class="pac-av" id="sb-av" style="background:linear-gradient(135deg,var(--teal),#52b5a8)">—</div>
+      <div style="flex:1;min-width:0"><div class="pac-mini-nome" id="sb-nome">Selecione um paciente</div><div class="pac-mini-info" id="sb-info">Clique para ver a lista</div></div>
+      <span style="color:rgba(255,255,255,.28);font-size:10px">▾</span>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-lbl">Clínica</div>
+    <div class="nav-item" data-s="pacientes" onclick="nav('pacientes')"><span class="nav-icon">👶</span>Pacientes</div>
+    <div class="nav-item active" data-s="dashboard" onclick="nav('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
+    <div class="nav-item" data-s="prontuario" onclick="nav('prontuario')"><span class="nav-icon">📋</span>Prontuário</div>
+    <div class="nav-item" data-s="metas" onclick="nav('metas')"><span class="nav-icon">🎯</span>Metas / PEI</div>
+    <div class="nav-lbl">Registros</div>
+    <div class="nav-item" data-s="sessoes" onclick="nav('sessoes')"><span class="nav-icon">🏥</span>Sessões</div>
+    <div class="nav-item" data-s="diario" onclick="nav('diario')"><span class="nav-icon">📔</span>Diário</div>
+    <div class="nav-item" data-s="comportamentos" onclick="nav('comportamentos')"><span class="nav-icon">📈</span>Comportamentos</div>
+    <div class="nav-item" data-s="medicacoes" onclick="nav('medicacoes')"><span class="nav-icon">💊</span>Medicações</div>
+    <div class="nav-lbl">Sistema</div>
+    <div class="nav-item" data-s="agenda" onclick="nav('agenda')"><span class="nav-icon">📅</span>Agenda</div>
+    <div class="nav-item" data-s="sqlconsole" onclick="nav('sqlconsole')"><span class="nav-icon">🗄️</span>Console SQL</div>
+  </nav>
+  <div class="sb-footer">
+    <div class="u-av">Dr</div>
+    <div><div style="font-size:12px;font-weight:600;color:#fff">Dr. Rafael Mendes</div><div style="font-size:10px;color:rgba(255,255,255,.33)">Neuropediatra</div></div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <span class="tb-title" id="tb-title">Dashboard</span>
+    <div class="tb-search">
+      <span class="search-ic">🔍</span>
+      <input type="text" placeholder="Buscar paciente…" id="srch" oninput="buscarGlobal(this.value)" autocomplete="off">
+      <div id="srch-drop"></div>
+    </div>
+    <div class="tb-right">
+      <button class="btn btn-s btn-sm" onclick="exportar()" title="Exportar JSON">📥 Exportar</button>
+      <label class="btn btn-s btn-sm" style="cursor:pointer" title="Importar JSON">📤 Importar<input type="file" accept=".json" onchange="importar(this)" style="display:none"></label>
+      <button class="btn btn-p btn-sm" onclick="nav('pacientes');setTimeout(()=>abrirMo('paciente'),80)">+ Novo Paciente</button>
+    </div>
+  </div>
+  <div class="content">
+
+  <!-- PACIENTES -->
+  <div class="section" id="sec-pacientes">
+    <div class="sec-hd">
+      <div><div class="sec-h">Pacientes</div><div class="sec-sub" id="pt-sub">—</div></div>
+      <button class="btn btn-p" onclick="abrirMo('paciente')">+ Novo Paciente</button>
+    </div>
+    <div class="card" style="margin-bottom:12px;padding:11px 14px">
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+        <div style="position:relative;flex:1;min-width:160px">
+          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:12px;color:rgba(26,26,46,.32)">🔍</span>
+          <input class="fi" id="pt-q" placeholder="Buscar nome, responsável…" style="padding-left:29px" oninput="renderPacientes()">
+        </div>
+        <select class="fsel" id="pt-fn" style="width:120px" onchange="renderPacientes()">
+          <option value="">Todos níveis</option><option value="1">Nível 1</option><option value="2">Nível 2</option><option value="3">Nível 3</option>
+        </select>
+        <select class="fsel" id="pt-fs" style="width:110px" onchange="renderPacientes()">
+          <option value="">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option>
+        </select>
+        <button class="btn btn-s btn-sm" onclick="document.getElementById('pt-q').value='';document.getElementById('pt-fn').value='';document.getElementById('pt-fs').value='';renderPacientes()">✕</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="tbl" id="pt-tbl"><thead><tr>
+        <th style="padding-left:16px">Paciente</th><th>Idade</th><th>Diagnóstico</th><th>Nível</th><th>Comunicação</th><th>Responsável</th><th>Status</th><th style="text-align:center">Ações</th>
+      </tr></thead><tbody id="pt-tbody"></tbody></table>
+      <div id="pt-empty" class="empty" style="display:none"><div class="empty-ic">👶</div><div class="empty-t">Nenhum paciente encontrado</div><div class="empty-d">Cadastre ou ajuste os filtros.</div></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="section active" id="sec-dashboard">
+    <div class="prof-hd">
+      <div class="prof-av" id="d-av" style="background:linear-gradient(135deg,var(--teal),#52b5a8)">—</div>
+      <div><div class="prof-name" id="d-nome">Nenhum paciente selecionado</div><div class="prof-det" id="d-det">Vá em Pacientes → selecione um</div><div class="prof-tags" id="d-tags"></div></div>
+      <div class="prof-stats" id="d-stats"></div>
+    </div>
+    <div class="g4" style="margin-bottom:13px">
+      <div class="kpi"><div class="kpi-ic t">💊</div><div><div class="kpi-val" id="kpi-m">—</div><div class="kpi-lbl">Medicações ativas</div></div></div>
+      <div class="kpi"><div class="kpi-ic a">🎯</div><div><div class="kpi-val" id="kpi-mt">—</div><div class="kpi-lbl">Metas ativas</div></div></div>
+      <div class="kpi"><div class="kpi-ic p">🏥</div><div><div class="kpi-val" id="kpi-s">—</div><div class="kpi-lbl">Sessões</div></div></div>
+      <div class="kpi"><div class="kpi-ic c">📔</div><div><div class="kpi-val" id="kpi-d">—</div><div class="kpi-lbl">Diários</div></div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="card-title">⚡ Atividade Recente</div><div class="card-sub">Últimos registros</div><div class="tl" id="d-tl"></div></div>
+      <div class="card"><div class="card-title">🎯 Progresso das Metas</div><div class="card-sub">Metas ativas</div><div id="d-prog"></div></div>
+    </div>
+  </div>
+
+  <!-- PRONTUÁRIO -->
+  <div class="section" id="sec-prontuario">
+    <div class="sec-hd">
+      <div><div class="sec-h">Prontuário Clínico</div><div class="sec-sub" id="pron-sub">—</div></div>
+      <button class="btn btn-p btn-sm" onclick="abrirMo('consulta')">+ Nova Consulta</button>
+    </div>
+    <div class="g2">
+      <div>
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-title">🧬 Dados Clínicos</div>
+          <div id="pron-dados" style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:7px;font-size:12px"></div>
+          <div class="divider"></div>
+          <div style="font-size:10px;font-weight:600;color:var(--ink-soft);margin-bottom:5px">ALERGIAS</div><div id="pron-al"></div>
+          <div style="font-size:10px;font-weight:600;color:var(--ink-soft);margin:9px 0 5px">CONDIÇÕES</div><div id="pron-co"></div>
+        </div>
+        <div class="card"><div class="card-title">💊 Medicações Ativas</div><div id="pron-meds"></div><button class="btn btn-g btn-sm" style="margin-top:7px" onclick="nav('medicacoes')">Ver todas →</button></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Consultas</div><div class="card-sub">Histórico de atendimentos</div>
+        <table class="tbl"><thead><tr><th>Data</th><th>Tipo</th><th>Condutas</th><th></th></tr></thead><tbody id="pron-cons"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- METAS -->
+  <div class="section" id="sec-metas">
+    <div class="sec-hd">
+      <div><div class="sec-h">Metas / PEI</div><div class="sec-sub" id="metas-sub">—</div></div>
+      <button class="btn btn-p btn-sm" onclick="abrirMo('meta')">+ Nova Meta</button>
+    </div>
+    <div id="metas-list"></div>
+  </div>
+
+  <!-- SESSÕES -->
+  <div class="section" id="sec-sessoes">
+    <div class="sec-hd">
+      <div><div class="sec-h">Sessões Terapêuticas</div><div class="sec-sub" id="sess-sub">—</div></div>
+      <button class="btn btn-p btn-sm" onclick="abrirMo('sessao')">+ Nova Sessão</button>
+    </div>
+    <div id="sess-list"></div>
+  </div>
+
+  <!-- DIÁRIO -->
+  <div class="section" id="sec-diario">
+    <div class="sec-hd">
+      <div><div class="sec-h">Diário Familiar</div><div class="sec-sub" id="diar-sub">—</div></div>
+      <button class="btn btn-p btn-sm" onclick="abrirMo('diario')">+ Novo Registro</button>
+    </div>
+    <div id="diar-list"></div>
+  </div>
+
+  <!-- COMPORTAMENTOS -->
+  <div class="section" id="sec-comportamentos">
+    <div class="sec-hd">
+      <div><div class="sec-h">Comportamentos</div><div class="sec-sub" id="comp-sub">—</div></div>
+      <button class="btn btn-p btn-sm" onclick="abrirMo('comportamento')">+ Registrar</button>
+    </div>
+    <div id="comp-list"></div>
+  </div>
+
+  <!-- MEDICAÇÕES -->
+  <div class="section" id="sec-medicacoes">
+    <div class="sec-hd">
+      <div><div class="sec-h">Medicações</div><div class="sec-sub" id="med-sub">—</div></div>
+      <button class="btn btn-p btn-sm" onclick="abrirMo('medicacao')">+ Nova Medicação</button>
+    </div>
+    <div id="med-list"></div>
+  </div>
+
+  <!-- AGENDA -->
+  <div class="section" id="sec-agenda">
+    <div class="sec-hd">
+      <div><div class="sec-h">Agenda</div><div class="sec-sub" id="ag-sub">Próximos eventos</div></div>
+      <button class="btn btn-p btn-sm" onclick="abrirMo('evento')">+ Novo Evento</button>
+    </div>
+    <div id="ag-list"></div>
+  </div>
+
+  <!-- SQL CONSOLE -->
+  <div class="section" id="sec-sqlconsole">
+    <div class="sec-hd"><div><div class="sec-h">Console SQL</div><div class="sec-sub">AlaSQL — banco 100% JavaScript, sem WebAssembly</div></div></div>
+    <div class="g2" style="margin-bottom:12px">
+      <div class="card"><div class="card-title">📊 Tabelas</div><div class="card-sub">8 tabelas do NeuroTrack</div><div id="sql-tbls" style="margin-top:5px"></div></div>
+      <div class="card"><div class="card-title">📈 Registros</div><div class="card-sub">Contagem por tabela</div><div id="sql-stats" style="margin-top:5px"></div></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 16px 0"><div class="card-title">🖥️ Terminal SQL</div><div class="card-sub">Ctrl+Enter para executar · Compatível com AlaSQL</div></div>
+      <div class="sql-con" style="margin:0;border-radius:0 0 16px 16px">
+        <textarea class="sql-in" id="sql-in">SELECT p.nome, p.nivel_suporte,
+  COUNT(DISTINCT m.id) AS metas,
+  COUNT(DISTINCT s.id) AS sessoes
+FROM pacientes p
+LEFT JOIN metas m ON m.paciente_id = p.id
+LEFT JOIN sessoes s ON s.paciente_id = p.id
+GROUP BY p.id, p.nome, p.nivel_suporte</textarea>
+        <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap">
+          <button class="btn btn-p btn-sm" onclick="runSQL()">▶ Executar</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM pacientes')">pacientes</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM metas ORDER BY criado_em DESC')">metas</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM medicacoes')">medicacoes</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM sessoes ORDER BY data_hora DESC')">sessoes</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM diarios ORDER BY data DESC')">diarios</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM comportamentos ORDER BY data_hora DESC')">comportamentos</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM consultas ORDER BY data_hora DESC')">consultas</button>
+          <button class="btn btn-s btn-sm" onclick="sqlQ('SELECT * FROM agenda ORDER BY data_hora')">agenda</button>
+        </div>
+        <div class="sql-res" id="sql-res"></div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ══ MODAIS ══ -->
+<!-- PACIENTE -->
+<div class="mo" id="mo-paciente">
+  <div class="mo-box" style="max-width:620px">
+    <div class="mo-hd"><div class="mo-title" id="mp-title">Novo Paciente</div><button class="mo-close" onclick="fecharMo('paciente')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="mp-id">
+      <div class="badge" style="background:var(--teal-xl);color:var(--teal-dark)">👤 Identificação</div>
+      <div class="fr"><div class="fg"><label class="fl">Nome completo *</label><input class="fi" id="mp-nome" placeholder="Nome da criança"></div><div class="fg"><label class="fl">Data de nascimento *</label><input type="date" class="fi" id="mp-nasc"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Apelido</label><input class="fi" id="mp-ap" placeholder="Como gosta de ser chamado"></div><div class="fg"><label class="fl">Sexo biológico</label><select class="fsel" id="mp-sx"><option value="">—</option><option value="M">Masculino</option><option value="F">Feminino</option><option value="outro">Outro</option></select></div></div>
+      <div class="badge" style="background:var(--purple-l);color:var(--purple)">🧬 Dados Clínicos</div>
+      <div class="fr"><div class="fg"><label class="fl">Diagnóstico</label><input class="fi" id="mp-diag" placeholder="Transtorno do Espectro Autista"></div><div class="fg"><label class="fl">CID-10</label><input class="fi" id="mp-cid" placeholder="F84.0"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Nível de suporte</label><select class="fsel" id="mp-nv"><option value="">—</option><option value="1">Nível 1</option><option value="2">Nível 2</option><option value="3">Nível 3</option></select></div><div class="fg"><label class="fl">Comunicação verbal</label><select class="fsel" id="mp-vb"><option value="nao_verbal">Não-verbal</option><option value="verbal">Verbal</option><option value="limitado">Verbal limitado</option></select></div></div>
+      <div class="fg"><label class="fl">Condições associadas</label><input class="fi" id="mp-cond" placeholder="Epilepsia, TDAH (separar por vírgula)"></div>
+      <div class="fg"><label class="fl">Alergias</label><input class="fi" id="mp-al" placeholder="Amoxicilina (separar por vírgula)"></div>
+      <div class="badge" style="background:var(--coral-l);color:var(--coral)">👨‍👩‍👦 Responsável</div>
+      <div class="fr"><div class="fg"><label class="fl">Responsável principal *</label><input class="fi" id="mp-resp" placeholder="Nome do responsável"></div><div class="fg"><label class="fl">Telefone</label><input class="fi" id="mp-tel" placeholder="(11) 99999-9999"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Plano de saúde</label><input class="fi" id="mp-plano" placeholder="Unimed…"></div><div class="fg"><label class="fl">Nº carteirinha</label><input class="fi" id="mp-cart"></div></div>
+      <div class="fg"><label class="fl">Observações gerais</label><textarea class="fta" id="mp-obs"></textarea></div>
+      <div id="mp-err" class="al d" style="display:none"></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('paciente')">Cancelar</button><button class="btn btn-p" onclick="salvarPaciente()">💾 Salvar Paciente</button></div>
+  </div>
+</div>
+
+<!-- META -->
+<div class="mo" id="mo-meta">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-title" id="mt-title">Nova Meta</div><button class="mo-close" onclick="fecharMo('meta')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="mt-id">
+      <div class="fr">
+        <div class="fg"><label class="fl">Área de desenvolvimento *</label><select class="fsel" id="mt-area"><option>Comunicação Expressiva</option><option>Comunicação Receptiva</option><option>Socialização</option><option>Cognição</option><option>Motricidade Fina</option><option>Motricidade Grossa</option><option>Autonomia</option><option>Sensorial</option><option>Comportamento Adaptativo</option></select></div>
+        <div class="fg"><label class="fl">Prioridade</label><select class="fsel" id="mt-pri"><option value="1">🔴 Alta</option><option value="2" selected>🟡 Média</option><option value="3">🟢 Baixa</option></select></div>
+      </div>
+      <div class="fg"><label class="fl">Título da meta *</label><input class="fi" id="mt-tit" placeholder="Ex: Pedidos funcionais com PECS"></div>
+      <div class="fg"><label class="fl">Descrição</label><textarea class="fta" id="mt-desc"></textarea></div>
+      <div class="fr"><div class="fg"><label class="fl">Linha de base</label><input class="fi" id="mt-base" placeholder="Estado atual"></div><div class="fg"><label class="fl">Critério de sucesso *</label><input class="fi" id="mt-crit" placeholder="80% em 3 sessões"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Contextos</label><select class="fsel" id="mt-ctx"><option value="casa,escola,clinica">Todos</option><option value="clinica">Clínica</option><option value="casa">Casa</option><option value="escola">Escola</option></select></div><div class="fg"><label class="fl">Prazo</label><input type="date" class="fi" id="mt-prazo"></div></div>
+      <div id="mt-err" class="al d" style="display:none"></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('meta')">Cancelar</button><button class="btn btn-p" onclick="salvarMeta()">💾 Salvar Meta</button></div>
+  </div>
+</div>
+
+<!-- SESSÃO -->
+<div class="mo" id="mo-sessao">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-title" id="ms-title">Nova Sessão</div><button class="mo-close" onclick="fecharMo('sessao')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="ms-id">
+      <div class="fr">
+        <div class="fg"><label class="fl">Tipo *</label><select class="fsel" id="ms-tipo"><option value="fonoaudiologia">Fonoaudiologia</option><option value="terapia_ocupacional">Terapia Ocupacional</option><option value="psicologia">Psicologia</option><option value="aba">ABA</option><option value="fisioterapia">Fisioterapia</option><option value="neuropediatria">Neuropediatria</option></select></div>
+        <div class="fg"><label class="fl">Data e hora *</label><input type="datetime-local" class="fi" id="ms-dt"></div>
+      </div>
+      <div class="fr"><div class="fg"><label class="fl">Local</label><select class="fsel" id="ms-loc"><option value="clinica">Clínica</option><option value="escola">Escola</option><option value="domicilio">Domicílio</option><option value="teleatendimento">Teleatendimento</option></select></div><div class="fg"><label class="fl">Profissional</label><input class="fi" id="ms-prof" placeholder="Nome"></div></div>
+      <div class="fg"><label class="fl">Metas trabalhadas</label><input class="fi" id="ms-metas" placeholder="PECS Fase III, Recusa CSA…"></div>
+      <div class="fg"><label class="fl">Resumo *</label><textarea class="fta" id="ms-res"></textarea></div>
+      <div class="fr"><div class="fg"><label class="fl">Humor da criança</label><select class="fsel" id="ms-humor"><option value="otimo">😄 Ótimo</option><option value="bom">😊 Bom</option><option value="regular">😐 Regular</option><option value="agitado">😤 Agitado</option><option value="recusou">😢 Recusou</option></select></div><div class="fg"><label class="fl">Engajamento (1–5)</label><select class="fsel" id="ms-eng"><option value="5">⭐⭐⭐⭐⭐ 5</option><option value="4" selected>⭐⭐⭐⭐ 4</option><option value="3">⭐⭐⭐ 3</option><option value="2">⭐⭐ 2</option><option value="1">⭐ 1</option></select></div></div>
+      <div id="ms-err" class="al d" style="display:none"></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('sessao')">Cancelar</button><button class="btn btn-p" onclick="salvarSessao()">💾 Salvar Sessão</button></div>
+  </div>
+</div>
+
+<!-- DIÁRIO -->
+<div class="mo" id="mo-diario">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-title">Registro Diário</div><button class="mo-close" onclick="fecharMo('diario')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="md-id">
+      <div class="fr"><div class="fg"><label class="fl">Data *</label><input type="date" class="fi" id="md-dt"></div><div class="fg"><label class="fl">Registrado por</label><input class="fi" id="md-resp" placeholder="Ex: Paula Oliveira"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Sono (horas)</label><input type="number" class="fi" id="md-sono" min="0" max="24" step="0.5" placeholder="7.5"></div><div class="fg"><label class="fl">Qualidade do sono</label><select class="fsel" id="md-sq"><option value="otimo">😴 Ótimo</option><option value="bom">😊 Bom</option><option value="fragmentado">😐 Fragmentado</option><option value="ruim">😤 Ruim</option></select></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Alimentação</label><select class="fsel" id="md-al"><option value="excelente">🍽️ Excelente</option><option value="boa">😊 Boa</option><option value="regular">😐 Regular</option><option value="recusou">😤 Recusou</option></select></div><div class="fg"><label class="fl">Humor predominante</label><select class="fsel" id="md-hu"><option value="muito_bom">😄 Muito bom</option><option value="bom">😊 Bom</option><option value="neutro">😐 Neutro</option><option value="ansioso">😰 Ansioso</option><option value="agitado">😤 Agitado</option><option value="triste">😢 Triste</option></select></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Houve crise?</label><select class="fsel" id="md-cr"><option value="0">Não</option><option value="1">Sim</option></select></div><div class="fg"><label class="fl">Evacuações (nº)</label><input type="number" class="fi" id="md-ev" min="0" placeholder="0"></div></div>
+      <div class="fg"><label class="fl">Descrição da crise</label><textarea class="fta" id="md-crd" style="min-height:48px" placeholder="Descreva brevemente…"></textarea></div>
+      <div class="fg"><label class="fl">Observações livres</label><textarea class="fta" id="md-obs"></textarea></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('diario')">Cancelar</button><button class="btn btn-p" onclick="salvarDiario()">💾 Salvar Registro</button></div>
+  </div>
+</div>
+
+<!-- COMPORTAMENTO -->
+<div class="mo" id="mo-comportamento">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-title">Registrar Comportamento</div><button class="mo-close" onclick="fecharMo('comportamento')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="mc-id">
+      <div class="fr"><div class="fg"><label class="fl">Comportamento *</label><input class="fi" id="mc-nome" placeholder="Ex: Morder mão"></div><div class="fg"><label class="fl">Data e hora *</label><input type="datetime-local" class="fi" id="mc-dt"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Contexto</label><select class="fsel" id="mc-ctx"><option value="casa">Casa</option><option value="escola">Escola</option><option value="clinica">Clínica</option><option value="comunidade">Comunidade</option></select></div><div class="fg"><label class="fl">Intensidade (1–5)</label><select class="fsel" id="mc-int"><option value="1">1 - Mínima</option><option value="2">2 - Leve</option><option value="3">3 - Moderada</option><option value="4">4 - Alta</option><option value="5">5 - Severa</option></select></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Duração (min)</label><input type="number" class="fi" id="mc-dur" min="0" placeholder="Em minutos"></div><div class="fg"><label class="fl">Frequência</label><input type="number" class="fi" id="mc-freq" min="1" value="1"></div></div>
+      <div class="fg"><label class="fl">Antecedente (A) — O que aconteceu antes?</label><textarea class="fta" id="mc-ant" style="min-height:48px"></textarea></div>
+      <div class="fg"><label class="fl">Consequência (C) — O que aconteceu depois?</label><textarea class="fta" id="mc-cons" style="min-height:48px"></textarea></div>
+      <div class="fg"><label class="fl">Observações</label><textarea class="fta" id="mc-obs" style="min-height:48px"></textarea></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('comportamento')">Cancelar</button><button class="btn btn-p" onclick="salvarComportamento()">💾 Salvar</button></div>
+  </div>
+</div>
+
+<!-- MEDICAÇÃO -->
+<div class="mo" id="mo-medicacao">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-title" id="mm-title">Nova Medicação</div><button class="mo-close" onclick="fecharMo('medicacao')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="mm-id">
+      <div class="fr"><div class="fg"><label class="fl">Nome genérico *</label><input class="fi" id="mm-nome" placeholder="Risperidona"></div><div class="fg"><label class="fl">Nome comercial</label><input class="fi" id="mm-com" placeholder="Risperdal"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Dose *</label><input class="fi" id="mm-dose" placeholder="1mg"></div><div class="fg"><label class="fl">Via</label><select class="fsel" id="mm-via"><option>oral</option><option>sublingual</option><option>intramuscular</option><option>outro</option></select></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Horários</label><input class="fi" id="mm-hor" placeholder="08:00, 20:00"></div><div class="fg"><label class="fl">Data início *</label><input type="date" class="fi" id="mm-ini"></div></div>
+      <div class="fg"><label class="fl">Motivo / Indicação</label><textarea class="fta" id="mm-mot" style="min-height:48px"></textarea></div>
+      <div class="fg"><label class="fl">Efeitos colaterais observados</label><textarea class="fta" id="mm-ef" style="min-height:48px"></textarea></div>
+      <div id="mm-err" class="al d" style="display:none"></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('medicacao')">Cancelar</button><button class="btn btn-p" onclick="salvarMedicacao()">💾 Salvar</button></div>
+  </div>
+</div>
+
+<!-- CONSULTA -->
+<div class="mo" id="mo-consulta">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-title">Nova Consulta</div><button class="mo-close" onclick="fecharMo('consulta')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="mc2-id">
+      <div class="fr"><div class="fg"><label class="fl">Profissional</label><input class="fi" id="mc2-prof" placeholder="Dr. Rafael Mendes"></div><div class="fg"><label class="fl">Data e hora *</label><input type="datetime-local" class="fi" id="mc2-dt"></div></div>
+      <div class="fg"><label class="fl">Tipo</label><select class="fsel" id="mc2-tp"><option value="primeira_vez">Primeira consulta</option><option value="retorno" selected>Retorno</option><option value="urgencia">Urgência</option><option value="avaliacao">Avaliação</option></select></div>
+      <div class="fg"><label class="fl">Resumo clínico</label><textarea class="fta" id="mc2-res"></textarea></div>
+      <div class="fg"><label class="fl">Condutas / Plano *</label><textarea class="fta" id="mc2-cond" placeholder="Medicações, encaminhamentos, orientações…"></textarea></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('consulta')">Cancelar</button><button class="btn btn-p" onclick="salvarConsulta()">💾 Salvar Consulta</button></div>
+  </div>
+</div>
+
+<!-- EVENTO -->
+<div class="mo" id="mo-evento">
+  <div class="mo-box">
+    <div class="mo-hd"><div class="mo-title">Novo Evento</div><button class="mo-close" onclick="fecharMo('evento')">✕</button></div>
+    <div class="mo-body">
+      <input type="hidden" id="mev-id">
+      <div class="fg"><label class="fl">Título *</label><input class="fi" id="mev-tit" placeholder="Ex: Consulta de Retorno"></div>
+      <div class="fr"><div class="fg"><label class="fl">Tipo</label><select class="fsel" id="mev-tp"><option value="consulta">Consulta</option><option value="sessao">Sessão</option><option value="reuniao">Reunião</option><option value="avaliacao">Avaliação</option><option value="outro">Outro</option></select></div><div class="fg"><label class="fl">Data e hora *</label><input type="datetime-local" class="fi" id="mev-dt"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Local</label><input class="fi" id="mev-loc" placeholder="Clínica, Videochamada…"></div><div class="fg"><label class="fl">Profissional</label><input class="fi" id="mev-prof"></div></div>
+      <div class="fg"><label class="fl">Observações</label><textarea class="fta" id="mev-obs" style="min-height:48px"></textarea></div>
+    </div>
+    <div class="mo-ft"><button class="btn btn-s" onclick="fecharMo('evento')">Cancelar</button><button class="btn btn-p" onclick="salvarEvento()">💾 Salvar Evento</button></div>
+  </div>
+</div>
+
+<!-- CONFIRMAR EXCLUSÃO -->
+<div class="mo" id="mo-confirm">
+  <div class="mo-box" style="max-width:360px">
+    <div style="padding:26px;text-align:center">
+      <div style="font-size:38px;margin-bottom:10px">🗑️</div>
+      <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:600;color:var(--ink);margin-bottom:7px">Confirmar exclusão</div>
+      <div style="font-size:12px;color:var(--ink-soft);line-height:1.6;margin-bottom:18px" id="cf-msg"></div>
+      <div style="display:flex;gap:9px;justify-content:center">
+        <button class="btn btn-s" onclick="fecharMo('confirm')">Cancelar</button>
+        <button class="btn btn-d" id="cf-ok">🗑️ Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div class="db-badge"><div class="db-dot"></div>AlaSQL · localStorage</div>
+
+<script>
+// ═══════════════════════════════════════════
+// NEUROTRACK DATABASE ENGINE
+// Motor: AlaSQL (100% JavaScript, sem WebAssembly)
+// Persistência: localStorage (funciona em GitHub Pages, Netlify, Vercel, etc.)
+// ═══════════════════════════════════════════
+
+const DB_KEY = 'nt_v5';
+let PAC_ID = null, PAC_NOME = '';
+
+// ── HELPERS ──
+const $ = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const now = () => new Date().toISOString();
+const hoje = () => new Date().toISOString().split('T')[0];
+const nowDT = () => { const d = new Date(); d.setSeconds(0,0); return d.toISOString().slice(0,16); };
+const calcIdade = n => { if(!n) return '?'; const a=Math.floor((Date.now()-new Date(n))/(365.25*24*3600*1000)); return a+' ano'+(a!==1?'s':''); };
+const fD = d => { if(!d) return '—'; const p=d.split('T')[0].split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d; };
+const fDT = d => { if(!d) return '—'; const [dt,tm=''] = d.split('T'); const p=dt.split('-'); return (p.length===3?p[2]+'/'+p[1]+'/'+p[0]:dt)+(tm?' '+tm.slice(0,5):''); };
+const AVBG = ['linear-gradient(135deg,#2a9d8f,#52b5a8)','linear-gradient(135deg,#e07a5f,#e8957c)','linear-gradient(135deg,#6c63a6,#8b84c4)','linear-gradient(135deg,#6b9080,#8ba896)','linear-gradient(135deg,#f2a65a,#f5c07a)'];
+const avBg = n => AVBG[(n.charCodeAt(0)||0) % AVBG.length];
+const ini = n => n.split(' ').slice(0,2).map(w=>w[0]).join('');
+const ldMsg = m => { $('ld-msg').textContent = m; };
+const mostrarErr = (el, msg) => { el.innerHTML = '⚠️ ' + msg; el.style.display = 'flex'; };
+
+function q(sql, p) {
+  try { return alasql(sql, p||[]); }
+  catch(e) { console.error('SQL:', sql, e); return []; }
+}
+function q1(sql, p) { const r = q(sql, p); return r&&r[0]?r[0]:null; }
+
+// ── TOAST ──
+let toastT;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// ── INIT DB ──
+function initDB() {
+  ldMsg('Criando tabelas do banco de dados…');
+  const TBLS = [
+    `CREATE TABLE IF NOT EXISTS pacientes (id INT AUTOINCREMENT PRIMARY KEY, nome STRING, apelido STRING, nascimento STRING, sexo STRING, diagnostico STRING, cid STRING, nivel_suporte STRING, comunicacao_verbal STRING, condicoes STRING, alergias STRING, responsavel STRING, telefone STRING, plano_saude STRING, carteirinha STRING, obs STRING, status STRING, criado_em STRING)`,
+    `CREATE TABLE IF NOT EXISTS medicacoes (id INT AUTOINCREMENT PRIMARY KEY, paciente_id INT, nome_generico STRING, nome_comercial STRING, dose STRING, via STRING, horarios STRING, data_inicio STRING, motivo STRING, efeitos_colaterais STRING, status STRING, criado_em STRING)`,
+    `CREATE TABLE IF NOT EXISTS metas (id INT AUTOINCREMENT PRIMARY KEY, paciente_id INT, area STRING, titulo STRING, descricao STRING, linha_base STRING, criterio_sucesso STRING, contextos STRING, prazo STRING, prioridade INT, progresso_pct FLOAT, status STRING, criado_em STRING)`,
+    `CREATE TABLE IF NOT EXISTS sessoes (id INT AUTOINCREMENT PRIMARY KEY, paciente_id INT, tipo STRING, data_hora STRING, local_sessao STRING, profissional STRING, metas_trabalhadas STRING, resumo STRING, humor STRING, engajamento INT, criado_em STRING)`,
+    `CREATE TABLE IF NOT EXISTS diarios (id INT AUTOINCREMENT PRIMARY KEY, paciente_id INT, data STRING, registrado_por STRING, sono_horas FLOAT, sono_qualidade STRING, alimentacao STRING, humor STRING, houve_crise INT, descricao_crise STRING, evacuacoes INT, obs STRING, criado_em STRING)`,
+    `CREATE TABLE IF NOT EXISTS comportamentos (id INT AUTOINCREMENT PRIMARY KEY, paciente_id INT, nome STRING, data_hora STRING, contexto STRING, intensidade INT, duracao_min FLOAT, frequencia INT, antecedente STRING, consequencia STRING, obs STRING, criado_em STRING)`,
+    `CREATE TABLE IF NOT EXISTS consultas (id INT AUTOINCREMENT PRIMARY KEY, paciente_id INT, profissional STRING, data_hora STRING, tipo STRING, resumo STRING, condutas STRING, criado_em STRING)`,
+    `CREATE TABLE IF NOT EXISTS agenda (id INT AUTOINCREMENT PRIMARY KEY, paciente_id INT, titulo STRING, tipo STRING, data_hora STRING, local_evento STRING, profissional STRING, obs STRING, status STRING, criado_em STRING)`,
+  ];
+  TBLS.forEach(t => alasql(t));
+
+  ldMsg('Carregando dados salvos…');
+  loadDB();
+
+  if (q('SELECT COUNT(*) AS c FROM pacientes')[0].c === 0) {
+    ldMsg('Populando dados de demonstração…');
+    seedDB();
+  }
+  saveDB();
+}
+
+// ── PERSISTÊNCIA ──
+const TABS = ['pacientes','medicacoes','metas','sessoes','diarios','comportamentos','consultas','agenda'];
+
+function saveDB() {
+  try {
+    const snap = {};
+    TABS.forEach(t => snap[t] = q('SELECT * FROM ' + t));
+    localStorage.setItem(DB_KEY, JSON.stringify(snap));
+  } catch(e) { console.warn('saveDB:', e); }
+}
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (!raw) return;
+    const snap = JSON.parse(raw);
+    TABS.forEach(t => {
+      if (!snap[t] || !snap[t].length) return;
+      q('DELETE FROM ' + t);
+      snap[t].forEach(row => {
+        try { alasql('INSERT INTO ' + t + ' VALUES ?', [row]); } catch(e) {}
+      });
+    });
+  } catch(e) { console.warn('loadDB:', e); }
+}
+
+function seedDB() {
+  const n = now();
+  // Pacientes
+  [ [1,'Miguel Oliveira','Miguel','2017-03-12','M','Transtorno do Espectro Autista','F84.0','2','nao_verbal','Epilepsia, TDAH','Amoxicilina','Paula e Marcos Oliveira','(11) 98765-4321','Unimed','123456789','Boa resposta ao PECS.','ativo'],
+    [2,'Sofia Mendonça','Sofi','2019-07-22','F','Transtorno do Espectro Autista','F84.1','1','limitado','Ansiedade','','Renata Mendonça','(21) 97654-3210','Bradesco','987654321','','ativo'],
+    [3,'Lucas Ferreira','Luca','2016-01-08','M','Transtorno do Espectro Autista','F84.0','3','nao_verbal','Def. intelectual, Epilepsia','Dipirona','Camila Ferreira','(11) 91234-5678','','','Usa cadeira de rodas.','ativo'],
+  ].forEach(r => alasql('INSERT INTO pacientes VALUES ?', [{id:r[0],nome:r[1],apelido:r[2],nascimento:r[3],sexo:r[4],diagnostico:r[5],cid:r[6],nivel_suporte:r[7],comunicacao_verbal:r[8],condicoes:r[9],alergias:r[10],responsavel:r[11],telefone:r[12],plano_saude:r[13],carteirinha:r[14],obs:r[15],status:r[16],criado_em:n}]));
+  // Medicações
+  [[1,1,'Risperidona','Risperdal','1mg','oral','08:00, 20:00','2024-09-03','Comportamentos disruptivos','','ativo'],
+   [2,1,'Valproato de sódio','Depakene','250mg','oral','12:00','2024-09-03','Epilepsia','','ativo'],
+   [3,1,'Melatonina','','3mg','sublingual','21:00','2024-11-15','Sono','','ativo'],
+   [4,2,'Sertralina','','25mg','oral','08:00','2024-12-01','Ansiedade','','ativo'],
+  ].forEach(r => alasql('INSERT INTO medicacoes VALUES ?',[{id:r[0],paciente_id:r[1],nome_generico:r[2],nome_comercial:r[3],dose:r[4],via:r[5],horarios:r[6],data_inicio:r[7],motivo:r[8],efeitos_colaterais:r[9],status:r[10],criado_em:n}]));
+  // Metas
+  [[1,1,'Comunicação Expressiva','Pedidos funcionais com PECS — Fase III','Usar figuras para pedir item desejado','Não usa PECS','80% em 3 sessões','casa,escola,clinica','2025-02-15',1,70,'ativa'],
+   [2,1,'Comunicação Expressiva','Recusa e protesto com CSA','Usar símbolo NÃO','Raramente recusa simbolicamente','80% das oportunidades','casa,escola,clinica','2025-03-30',2,45,'ativa'],
+   [3,1,'Motricidade Fina','Pinça digital — segurar lápis','Segurar em pinça trípode','Não segura adequadamente','3 min consecutivos','clinica,escola','2025-03-30',2,38,'ativa'],
+   [4,1,'Cognição','Discriminação de cores primárias','Identificar 3 cores','Identifica 1 cor','80% de acertos','clinica,escola','2025-01-31',3,80,'ativa'],
+   [5,2,'Socialização','Contato visual intencional','Manter contato por 3s','Evita contato visual','5/5 tentativas','clinica','2025-03-15',2,55,'ativa'],
+   [6,3,'Comunicação Expressiva','Uso de AAC para pedidos básicos','Usar tablet AAC','Não usa','5 pedidos por sessão','clinica','2025-04-30',1,18,'ativa'],
+  ].forEach(r => alasql('INSERT INTO metas VALUES ?',[{id:r[0],paciente_id:r[1],area:r[2],titulo:r[3],descricao:r[4],linha_base:r[5],criterio_sucesso:r[6],contextos:r[7],prazo:r[8],prioridade:r[9],progresso_pct:r[10],status:r[11],criado_em:n}]));
+  // Sessões
+  [[1,1,'fonoaudiologia','2025-01-27T14:00','clinica','Dra. Carla Souza','Pedidos PECS, Recusa CSA','PECS Fase III: 7/10 (70%). Sessão produtiva.','bom',4],
+   [2,1,'terapia_ocupacional','2025-01-24T10:00','clinica','Beatriz Alves','Pinça digital','Massinha e pinçamento. Tolerância ao toque melhorada.','neutro',3],
+   [3,2,'psicologia','2025-01-20T15:00','clinica','Dr. Paulo Rocha','Contato visual','Brinquedos de causa-efeito. Bom engajamento.','bom',4],
+  ].forEach(r => alasql('INSERT INTO sessoes VALUES ?',[{id:r[0],paciente_id:r[1],tipo:r[2],data_hora:r[3],local_sessao:r[4],profissional:r[5],metas_trabalhadas:r[6],resumo:r[7],humor:r[8],engajamento:r[9],criado_em:n}]));
+  // Diários
+  [[1,1,'2025-01-27','Paula Oliveira',6.5,'fragmentado','regular','agitado',1,'Crise com barulho da TV.',1,''],
+   [2,1,'2025-01-26','Marcos Oliveira',8,'otimo','boa','muito_bom',0,'',2,'Dia ótimo no parque!'],
+   [3,1,'2025-01-25','Paula Oliveira',7,'bom','boa','bom',0,'',1,''],
+   [4,2,'2025-01-27','Renata Mendonça',7.5,'bom','excelente','bom',0,'',1,''],
+  ].forEach(r => alasql('INSERT INTO diarios VALUES ?',[{id:r[0],paciente_id:r[1],data:r[2],registrado_por:r[3],sono_horas:r[4],sono_qualidade:r[5],alimentacao:r[6],humor:r[7],houve_crise:r[8],descricao_crise:r[9],evacuacoes:r[10],obs:r[11],criado_em:n}]));
+  // Comportamentos
+  [[1,1,'Automutilação - morder mão','2025-01-27T21:40','casa',3,4,1,'Som alto da TV','Pai apagou a TV',''],
+   [2,1,'Agitação em transições','2025-01-27T13:10','escola',2,1,1,'Sinal de mudança de turno','Timer visual antecipado',''],
+   [3,3,'Birra intensa','2025-01-22T10:00','escola',4,8,1,'Negativa para atividade','Saída da sala + objeto preferido',''],
+  ].forEach(r => alasql('INSERT INTO comportamentos VALUES ?',[{id:r[0],paciente_id:r[1],nome:r[2],data_hora:r[3],contexto:r[4],intensidade:r[5],duracao_min:r[6],frequencia:r[7],antecedente:r[8],consequencia:r[9],obs:r[10],criado_em:n}]));
+  // Consultas
+  [[1,1,'Dr. Rafael Mendes','2025-01-15T09:30','retorno','Evolução positiva. Sono melhorou.','Aumentar risperidona 1mg 2x/dia. Retorno em 30 dias.'],
+   [2,1,'Dr. Rafael Mendes','2024-09-03T10:00','primeira_vez','Avaliação inicial. TEA F84.0 Nível 2.','Encaminhar fono, TO, psicólogo. Iniciar risperidona 0.5mg.'],
+  ].forEach(r => alasql('INSERT INTO consultas VALUES ?',[{id:r[0],paciente_id:r[1],profissional:r[2],data_hora:r[3],tipo:r[4],resumo:r[5],condutas:r[6],criado_em:n}]));
+  // Agenda
+  [[1,1,'Fonoaudiologia','sessao','2025-01-30T14:00','Clínica NeuroVida','Dra. Carla Souza','','agendado'],
+   [2,1,'Terapia Ocupacional','sessao','2025-01-31T10:00','Clínica NeuroVida','Beatriz Alves','','agendado'],
+   [3,1,'Reunião de Equipe','reuniao','2025-02-05T16:00','Videochamada','Dr. Rafael Mendes','','agendado'],
+   [4,1,'Consulta de Retorno','consulta','2025-02-12T09:30','Clínica NeuroVida','Dr. Rafael Mendes','','agendado'],
+   [5,2,'Sessão de Psicologia','sessao','2025-01-31T15:00','Clínica NeuroVida','Dr. Paulo Rocha','','agendado'],
+  ].forEach(r => alasql('INSERT INTO agenda VALUES ?',[{id:r[0],paciente_id:r[1],titulo:r[2],tipo:r[3],data_hora:r[4],local_evento:r[5],profissional:r[6],obs:r[7],status:r[8],criado_em:n}]));
+}
+
+// ── EXPORTAR / IMPORTAR ──
+function exportar() {
+  const snap = {}; TABS.forEach(t => snap[t] = q('SELECT * FROM ' + t));
+  const blob = new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+  const a = Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:'neurotrack_backup.json'});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('📥 Backup exportado!');
+}
+
+function importar(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const snap = JSON.parse(e.target.result);
+      TABS.forEach(t => {
+        if (!snap[t]) return;
+        q('DELETE FROM ' + t);
+        snap[t].forEach(row => { try { alasql('INSERT INTO ' + t + ' VALUES ?',[row]); } catch(e){} });
+      });
+      saveDB(); renderPacientes(); toast('✅ Dados importados!');
+    } catch(ex) { toast('❌ Arquivo inválido: '+ex.message); }
+  };
+  r.readAsText(file); input.value = '';
+}
+
+// ── NAVEGAÇÃO ──
+const TITULOS = {pacientes:'Pacientes',dashboard:'Dashboard',prontuario:'Prontuário Clínico',metas:'Metas / PEI',sessoes:'Sessões',diario:'Diário Familiar',comportamentos:'Comportamentos',medicacoes:'Medicações',agenda:'Agenda',sqlconsole:'Console SQL'};
+
+function nav(s) {
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const sec = $('sec-'+s); if (sec) sec.classList.add('active');
+  const ni = document.querySelector('[data-s="'+s+'"]'); if (ni) ni.classList.add('active');
+  $('tb-title').textContent = TITULOS[s]||s;
+  if (s==='pacientes') renderPacientes();
+  if (s==='dashboard') renderDashboard();
+  if (s==='prontuario') renderProntuario();
+  if (s==='metas') renderMetas();
+  if (s==='sessoes') renderSessoes();
+  if (s==='diario') renderDiario();
+  if (s==='comportamentos') renderComportamentos();
+  if (s==='medicacoes') renderMedicacoes();
+  if (s==='agenda') renderAgenda();
+  if (s==='sqlconsole') renderSQL();
+}
+
+function setPac(id) {
+  const p = q1('SELECT * FROM pacientes WHERE id='+id); if (!p) return;
+  PAC_ID=p.id; PAC_NOME=p.nome;
+  const bg=avBg(p.nome), in2=ini(p.nome);
+  $('sb-av').textContent=in2; $('sb-av').style.background=bg;
+  $('sb-nome').textContent=p.nome;
+  $('sb-info').textContent=calcIdade(p.nascimento)+' · Nível '+(p.nivel_suporte||'?');
+}
+
+// ── MODAIS ──
+function abrirMo(tipo) {
+  const el = $('mo-'+tipo); if (el) el.classList.add('open');
+  if (tipo==='paciente'){
+    $('mp-id').value=''; $('mp-title').textContent='Novo Paciente';
+    ['mp-nome','mp-nasc','mp-ap','mp-diag','mp-cid','mp-cond','mp-al','mp-resp','mp-tel','mp-plano','mp-cart','mp-obs'].forEach(id=>{const e=$( id);if(e)e.value='';});
+    $('mp-sx').value=''; $('mp-nv').value=''; $('mp-vb').value='nao_verbal';
+    $('mp-err').style.display='none';
+  }
+  if (tipo==='meta'){$('mt-id').value='';$('mt-title').textContent='Nova Meta';['mt-tit','mt-desc','mt-base','mt-crit','mt-prazo'].forEach(id=>$(id).value='');$('mt-pri').value='2';$('mt-err').style.display='none';}
+  if (tipo==='sessao'){$('ms-id').value='';$('ms-title').textContent='Nova Sessão';$('ms-dt').value=nowDT();['ms-prof','ms-metas','ms-res'].forEach(id=>$(id).value='');$('ms-err').style.display='none';}
+  if (tipo==='diario'){$('md-id').value='';$('md-dt').value=hoje();['md-resp','md-sono','md-crd','md-obs','md-ev'].forEach(id=>$(id).value='');}
+  if (tipo==='comportamento'){$('mc-id').value='';$('mc-dt').value=nowDT();['mc-nome','mc-dur','mc-ant','mc-cons','mc-obs'].forEach(id=>$(id).value='');$('mc-freq').value='1';}
+  if (tipo==='medicacao'){$('mm-id').value='';$('mm-title').textContent='Nova Medicação';['mm-nome','mm-com','mm-dose','mm-hor','mm-mot','mm-ef'].forEach(id=>$(id).value='');$('mm-ini').value=hoje();$('mm-via').value='oral';$('mm-err').style.display='none';}
+  if (tipo==='consulta'){$('mc2-id').value='';['mc2-prof','mc2-res','mc2-cond'].forEach(id=>$(id).value='');$('mc2-dt').value=nowDT();$('mc2-tp').value='retorno';}
+  if (tipo==='evento'){$('mev-id').value='';['mev-tit','mev-loc','mev-prof','mev-obs'].forEach(id=>$(id).value='');$('mev-dt').value=nowDT();}
+}
+
+function fecharMo(tipo) { const el=$('mo-'+tipo); if(el) el.classList.remove('open'); }
+
+function confirmar(msg, fn) {
+  $('cf-msg').innerHTML = msg;
+  $('cf-ok').onclick = () => { fn(); fecharMo('confirm'); };
+  abrirMo('confirm');
+}
+
+// Fechar modal ao clicar fora
+document.querySelectorAll('.mo').forEach(mo => {
+  mo.addEventListener('click', e => { if (e.target === mo) mo.classList.remove('open'); });
+});
+
+// ── PACIENTES ──
+function renderPacientes() {
+  const busca = ($('pt-q').value||'').toLowerCase();
+  const fn = $('pt-fn').value, fs = $('pt-fs').value;
+  let rows = q('SELECT * FROM pacientes ORDER BY nome');
+  if (busca) rows = rows.filter(p=>(p.nome||'').toLowerCase().includes(busca)||(p.responsavel||'').toLowerCase().includes(busca)||(p.diagnostico||'').toLowerCase().includes(busca));
+  if (fn) rows = rows.filter(p=>p.nivel_suporte===fn);
+  if (fs) rows = rows.filter(p=>p.status===fs);
+  const tot = q('SELECT COUNT(*) AS c FROM pacientes')[0].c;
+  $('pt-sub').textContent = rows.length+' de '+tot+' paciente'+(tot!==1?'s':'')+' cadastrado'+(tot!==1?'s':'');
+  const tbody=$('pt-tbody'), empty=$('pt-empty'), tbl=$('pt-tbl');
+  if (!rows.length){tbody.innerHTML='';tbl.style.display='none';empty.style.display='block';return;}
+  tbl.style.display=''; empty.style.display='none';
+  const vM={nao_verbal:'<span class="tag c">Não-verbal</span>',verbal:'<span class="tag t">Verbal</span>',limitado:'<span class="tag a">Verbal limitado</span>'};
+  const nM={'1':'<span class="tag s">Nível 1</span>','2':'<span class="tag a">Nível 2</span>','3':'<span class="tag c">Nível 3</span>'};
+  tbody.innerHTML = rows.map(p=>`<tr>
+    <td style="padding-left:16px"><div style="display:flex;align-items:center;gap:8px">
+      <div style="width:30px;height:30px;border-radius:8px;background:${avBg(p.nome)};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;font-family:'Fraunces',serif;flex-shrink:0">${ini(p.nome)}</div>
+      <div><div style="font-size:12px;font-weight:600">${esc(p.nome)}</div><div style="font-size:10px;color:var(--ink-soft);opacity:.58">${p.apelido?'"'+esc(p.apelido)+'" · ':''}CID ${esc(p.cid||'—')}</div></div>
+    </div></td>
+    <td>${calcIdade(p.nascimento)}</td>
+    <td style="max-width:130px"><div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.diagnostico||'—')}</div></td>
+    <td>${nM[p.nivel_suporte]||'<span class="tag k">—</span>'}</td>
+    <td>${vM[p.comunicacao_verbal]||'<span class="tag k">—</span>'}</td>
+    <td><div style="font-size:11px;font-weight:500">${esc(p.responsavel||'—')}</div><div style="font-size:10px;color:var(--ink-soft);opacity:.55">${esc(p.telefone||'')}</div></td>
+    <td><span class="tag ${p.status==='ativo'?'t':'k'}">${p.status==='ativo'?'✅ Ativo':'⏸ Inativo'}</span></td>
+    <td><div style="display:flex;gap:4px;justify-content:center">
+      <button class="btn btn-s btn-sm" onclick="editarPac(${p.id})" title="Editar">✏️</button>
+      <button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar('Excluir <strong style=color:var(--coral)>${esc(p.nome)}</strong>?<br><small>Todos os registros vinculados serão removidos.</small>',()=>excluirPac(${p.id},'${esc(p.nome)}'))" title="Excluir">🗑️</button>
+      <button class="btn btn-p btn-sm" onclick="selPac(${p.id})" title="Abrir prontuário">→</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function selPac(id) {
+  setPac(id); nav('dashboard');
+  toast('📋 Abrindo: '+q1('SELECT nome FROM pacientes WHERE id='+id)?.nome);
+}
+
+function salvarPaciente() {
+  const id=$('mp-id').value, nome=$('mp-nome').value.trim(), nasc=$('mp-nasc').value, resp=$('mp-resp').value.trim();
+  const err=$('mp-err');
+  if (!nome){mostrarErr(err,'Nome é obrigatório.');return;}
+  if (!nasc){mostrarErr(err,'Data de nascimento é obrigatória.');return;}
+  if (!resp){mostrarErr(err,'Responsável é obrigatório.');return;}
+  err.style.display='none';
+  const d={nome,nascimento:nasc,apelido:$('mp-ap').value.trim(),sexo:$('mp-sx').value,diagnostico:$('mp-diag').value.trim(),cid:$('mp-cid').value.trim(),nivel_suporte:$('mp-nv').value,comunicacao_verbal:$('mp-vb').value,condicoes:$('mp-cond').value.trim(),alergias:$('mp-al').value.trim(),responsavel:resp,telefone:$('mp-tel').value.trim(),plano_saude:$('mp-plano').value.trim(),carteirinha:$('mp-cart').value.trim(),obs:$('mp-obs').value.trim(),status:'ativo'};
+  if (id) {
+    const sets=Object.entries(d).map(([k,v])=>k+"='"+String(v).replace(/'/g,"''")+"'").join(',');
+    q('UPDATE pacientes SET '+sets+' WHERE id='+id);
+    toast('✅ Paciente atualizado!');
+  } else {
+    d.criado_em=now(); alasql('INSERT INTO pacientes VALUES ?',[d]);
+    toast('✅ Paciente cadastrado!');
+  }
+  fecharMo('paciente'); saveDB(); renderPacientes();
+}
+
+function editarPac(id) {
+  const p=q1('SELECT * FROM pacientes WHERE id='+id); if(!p) return;
+  $('mp-id').value=p.id; $('mp-title').textContent='Editar Paciente';
+  $('mp-nome').value=p.nome||''; $('mp-nasc').value=p.nascimento||''; $('mp-ap').value=p.apelido||'';
+  $('mp-sx').value=p.sexo||''; $('mp-diag').value=p.diagnostico||''; $('mp-cid').value=p.cid||'';
+  $('mp-nv').value=p.nivel_suporte||''; $('mp-vb').value=p.comunicacao_verbal||'nao_verbal';
+  $('mp-cond').value=p.condicoes||''; $('mp-al').value=p.alergias||'';
+  $('mp-resp').value=p.responsavel||''; $('mp-tel').value=p.telefone||'';
+  $('mp-plano').value=p.plano_saude||''; $('mp-cart').value=p.carteirinha||''; $('mp-obs').value=p.obs||'';
+  $('mp-err').style.display='none'; abrirMo('paciente');
+}
+
+function excluirPac(id,nome) {
+  ['pacientes','medicacoes','metas','sessoes','diarios','comportamentos','consultas','agenda'].forEach(t=>{
+    if(t==='pacientes') q('DELETE FROM pacientes WHERE id='+id);
+    else q('DELETE FROM '+t+' WHERE paciente_id='+id);
+  });
+  if(PAC_ID===id){PAC_ID=null;PAC_NOME='';$('sb-av').textContent='—';$('sb-nome').textContent='Selecione um paciente';$('sb-info').textContent='Clique para ver a lista';}
+  saveDB(); renderPacientes(); toast('🗑️ "'+nome+'" excluído.');
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  if (!PAC_ID) return;
+  const p=q1('SELECT * FROM pacientes WHERE id='+PAC_ID); if(!p) return;
+  $('d-av').textContent=ini(p.nome); $('d-av').style.background=avBg(p.nome);
+  $('d-nome').textContent=p.nome;
+  $('d-det').textContent='Nascido em '+fD(p.nascimento)+' · '+calcIdade(p.nascimento)+' · '+(p.diagnostico||'TEA')+' · CID '+(p.cid||'—');
+  const tags=[]; if(p.nivel_suporte) tags.push('Nível '+p.nivel_suporte);
+  const vl={nao_verbal:'Não-verbal',verbal:'Verbal',limitado:'Verbal limitado'};
+  if(p.comunicacao_verbal) tags.push(vl[p.comunicacao_verbal]||p.comunicacao_verbal);
+  if(p.condicoes) p.condicoes.split(',').forEach(c=>tags.push(c.trim()));
+  $('d-tags').innerHTML=tags.map(t=>'<span class="prof-tag">'+esc(t)+'</span>').join('');
+  const med=q('SELECT COUNT(*) AS c FROM medicacoes WHERE paciente_id='+PAC_ID+' AND status=\'ativo\'')[0].c;
+  const met=q('SELECT COUNT(*) AS c FROM metas WHERE paciente_id='+PAC_ID+' AND status=\'ativa\'')[0].c;
+  const ses=q('SELECT COUNT(*) AS c FROM sessoes WHERE paciente_id='+PAC_ID)[0].c;
+  const dia=q('SELECT COUNT(*) AS c FROM diarios WHERE paciente_id='+PAC_ID)[0].c;
+  $('kpi-m').textContent=med; $('kpi-mt').textContent=met; $('kpi-s').textContent=ses; $('kpi-d').textContent=dia;
+  $('d-stats').innerHTML='<div><div class="ps-val">'+met+'</div><div class="ps-lbl">Metas</div></div><div><div class="ps-val">'+ses+'</div><div class="ps-lbl">Sessões</div></div><div><div class="ps-val">'+dia+'</div><div class="ps-lbl">Diários</div></div>';
+  // Timeline
+  const evts=[];
+  q('SELECT tipo,data_hora FROM sessoes WHERE paciente_id='+PAC_ID+' ORDER BY data_hora DESC LIMIT 3').forEach(r=>evts.push({dt:r.data_hora,txt:'🏥 Sessão: '+r.tipo.replace('_',' '),cl:''}));
+  q('SELECT data,humor,houve_crise FROM diarios WHERE paciente_id='+PAC_ID+' ORDER BY data DESC LIMIT 2').forEach(r=>evts.push({dt:r.data,txt:'📔 Diário · '+r.humor+(r.houve_crise?' ⚡':''),cl:r.houve_crise?'c':''}));
+  q('SELECT nome,data_hora FROM comportamentos WHERE paciente_id='+PAC_ID+' ORDER BY data_hora DESC LIMIT 2').forEach(r=>evts.push({dt:r.data_hora,txt:'⚡ '+r.nome,cl:'c'}));
+  evts.sort((a,b)=>b.dt>a.dt?1:-1);
+  $('d-tl').innerHTML=evts.slice(0,6).map(e=>'<div class="tl-item"><div class="tl-dot '+e.cl+'"></div><div class="tl-date">'+fDT(e.dt)+'</div><div class="tl-body">'+esc(e.txt)+'</div></div>').join('')||'<div style="font-size:12px;opacity:.38">Nenhum evento registrado.</div>';
+  // Metas progress
+  const metas=q('SELECT area,titulo,progresso_pct FROM metas WHERE paciente_id='+PAC_ID+' AND status=\'ativa\' ORDER BY prioridade LIMIT 6');
+  const cM={'Motricidade Fina':'c','Motricidade Grossa':'c','Cognição':'p','Autonomia':'a','Sensorial':'a'};
+  $('d-prog').innerHTML=metas.map(m=>'<div class="prog"><div class="prog-hd"><span class="prog-lbl" style="font-size:11px">'+esc(m.titulo)+'</span><span class="prog-val">'+Math.round(m.progresso_pct||0)+'%</span></div><div class="prog-bg"><div class="prog-fill '+(cM[m.area]||'')+'" style="width:'+Math.round(m.progresso_pct||0)+'%"></div></div></div>').join('')||'<div style="font-size:12px;opacity:.38">Nenhuma meta ativa.</div>';
+}
+
+// ── PRONTUÁRIO ──
+function renderProntuario() {
+  if(!PAC_ID) return;
+  const p=q1('SELECT * FROM pacientes WHERE id='+PAC_ID);
+  $('pron-sub').textContent=p.nome+' · Prontuário completo';
+  $('pron-dados').innerHTML=[['Diagnóstico',p.diagnostico||'—'],['CID-10',p.cid||'—'],['Nível DSM-5',p.nivel_suporte?'Nível '+p.nivel_suporte:'—'],['Comunicação',p.comunicacao_verbal||'—'],['Responsável',p.responsavel||'—'],['Telefone',p.telefone||'—'],['Plano',p.plano_saude||'—'],['Carteirinha',p.carteirinha||'—']].map(([k,v])=>'<div><div style="font-size:10px;font-weight:600;color:var(--ink-soft);margin-bottom:2px">'+k+'</div><strong style="font-size:12px">'+esc(v)+'</strong></div>').join('');
+  $('pron-al').innerHTML=(p.alergias||'Nenhuma').split(',').map(a=>'<span class="tag c" style="margin:2px">'+esc(a.trim())+'</span>').join('');
+  $('pron-co').innerHTML=(p.condicoes||'').split(',').filter(Boolean).map(c=>'<span class="tag a" style="margin:2px">'+esc(c.trim())+'</span>').join('')||'<span style="font-size:12px;opacity:.4">Nenhuma</span>';
+  const meds=q('SELECT * FROM medicacoes WHERE paciente_id='+PAC_ID+' AND status=\'ativo\' ORDER BY nome_generico');
+  $('pron-meds').innerHTML=meds.map(m=>'<div class="med-item"><div class="med-ic">💊</div><div><div style="font-size:12px;font-weight:600">'+esc(m.nome_generico)+'</div><div style="font-size:11px;color:var(--ink-soft)">'+esc(m.dose)+' · '+esc(m.via)+'</div></div><div style="margin-left:auto"><span style="font-size:10px;font-weight:600;color:var(--teal-dark);background:var(--teal-xl);padding:2px 7px;border-radius:5px">'+esc(m.horarios||'—')+'</span></div></div>').join('')||'<div style="font-size:12px;opacity:.4">Nenhuma ativa.</div>';
+  const cons=q('SELECT * FROM consultas WHERE paciente_id='+PAC_ID+' ORDER BY data_hora DESC');
+  $('pron-cons').innerHTML=cons.map(c=>'<tr><td>'+fD(c.data_hora)+'</td><td><span class="tag t">'+esc(c.tipo)+'</span></td><td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.condutas)+'</td><td><button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar(\'Excluir esta consulta?\',()=>{q(\'DELETE FROM consultas WHERE id='+c.id+'\');saveDB();renderProntuario();toast(\'🗑️ Consulta excluída.\')})">🗑️</button></td></tr>').join('')||'<tr><td colspan="4" style="text-align:center;opacity:.38;font-size:12px">Nenhuma consulta.</td></tr>';
+}
+
+// ── METAS ──
+function renderMetas() {
+  if(!PAC_ID) return;
+  const metas=q('SELECT * FROM metas WHERE paciente_id='+PAC_ID+' ORDER BY prioridade, area');
+  $('metas-sub').textContent=PAC_NOME+' · '+metas.filter(m=>m.status==='ativa').length+' metas ativas';
+  const areas={}; metas.forEach(m=>{if(!areas[m.area])areas[m.area]=[];areas[m.area].push(m);});
+  const pC={'1':'c','2':'a','3':'s'};
+  const aIc={'Comunicação Expressiva':'🗣️','Comunicação Receptiva':'👂','Socialização':'👥','Cognição':'🧠','Motricidade Fina':'✋','Motricidade Grossa':'🦶','Autonomia':'🏠','Sensorial':'👁️','Comportamento Adaptativo':'🧩'};
+  $('metas-list').innerHTML=Object.entries(areas).map(([area,ms])=>`
+    <div class="card" style="margin-bottom:11px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px">
+        <span style="font-size:17px">${aIc[area]||'🎯'}</span>
+        <div class="card-title" style="margin-bottom:0">${esc(area)}</div>
+        <span class="tag t" style="margin-left:auto">${ms.length} meta${ms.length!==1?'s':''}</span>
+      </div>
+      ${ms.map(m=>`<div style="border:1px solid var(--border);border-radius:9px;padding:11px 13px;margin-bottom:7px">
+        <div style="display:flex;gap:9px;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;margin-bottom:2px">${esc(m.titulo)}</div>
+            ${m.descricao?`<div style="font-size:11px;color:var(--ink-soft);margin-bottom:5px">${esc(m.descricao)}</div>`:''}
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px">
+              <span class="tag ${pC[m.prioridade]||'k'}">${m.prioridade==1?'🔴 Alta':m.prioridade==2?'🟡 Média':'🟢 Baixa'}</span>
+              <span class="tag t">${Math.round(m.progresso_pct||0)}%</span>
+              ${m.prazo?`<span class="tag a">Prazo: ${fD(m.prazo)}</span>`:''}
+              ${m.contextos?m.contextos.split(',').map(c=>`<span class="tag k">${c.trim()}</span>`).join(''):''}
+            </div>
+            <div style="font-size:11px;color:var(--ink-soft);margin-bottom:5px">🎯 ${esc(m.criterio_sucesso)}</div>
+            <div class="prog-bg"><div class="prog-fill ${m.progresso_pct>=80?'':'a'}" style="width:${m.progresso_pct||0}%"></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            <button class="btn btn-s btn-sm" onclick="editarMeta(${m.id})">✏️</button>
+            <button class="btn btn-sm" style="background:var(--teal-xl);color:var(--teal-dark);font-size:10px;padding:3px 7px" onclick="progMeta(${m.id},${m.progresso_pct||0})">📊%</button>
+            <button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar('Excluir meta <strong>${esc(m.titulo)}</strong>?',()=>{q('DELETE FROM metas WHERE id=${m.id}');saveDB();renderMetas();renderDashboard();toast('🗑️ Meta excluída.')})">🗑️</button>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>`).join('')||'<div class="empty"><div class="empty-ic">🎯</div><div class="empty-t">Nenhuma meta cadastrada</div><div class="empty-d">Clique em "+ Nova Meta" para começar.</div></div>';
+}
+
+function salvarMeta() {
+  const id=$('mt-id').value, titulo=$('mt-tit').value.trim(), crit=$('mt-crit').value.trim();
+  const err=$('mt-err');
+  if(!titulo){mostrarErr(err,'Título é obrigatório.');return;}
+  if(!crit){mostrarErr(err,'Critério de sucesso é obrigatório.');return;}
+  err.style.display='none';
+  const d={area:$('mt-area').value,titulo,descricao:$('mt-desc').value.trim(),linha_base:$('mt-base').value.trim(),criterio_sucesso:crit,contextos:$('mt-ctx').value,prazo:$('mt-prazo').value||'',prioridade:parseInt($('mt-pri').value),progresso_pct:0,status:'ativa'};
+  if(id){const sets=Object.entries(d).map(([k,v])=>k+"='"+String(v).replace(/'/g,"''")+"'").join(',');q('UPDATE metas SET '+sets+' WHERE id='+id);toast('✅ Meta atualizada!');}
+  else{d.paciente_id=PAC_ID;d.criado_em=now();alasql('INSERT INTO metas VALUES ?',[d]);toast('✅ Meta cadastrada!');}
+  fecharMo('meta');saveDB();renderMetas();renderDashboard();
+}
+
+function editarMeta(id) {
+  const m=q1('SELECT * FROM metas WHERE id='+id);if(!m)return;
+  $('mt-id').value=m.id;$('mt-title').textContent='Editar Meta';$('mt-area').value=m.area;$('mt-tit').value=m.titulo;
+  $('mt-desc').value=m.descricao||'';$('mt-base').value=m.linha_base||'';$('mt-crit').value=m.criterio_sucesso;
+  $('mt-ctx').value=m.contextos||'casa,escola,clinica';$('mt-prazo').value=m.prazo||'';$('mt-pri').value=m.prioridade||2;
+  $('mt-err').style.display='none';abrirMo('meta');
+}
+
+function progMeta(id,atual) {
+  const novo=prompt('Atualizar progresso (0–100%):\nAtual: '+Math.round(atual||0)+'%',Math.round(atual||0));
+  if(novo===null)return;
+  const val=Math.min(100,Math.max(0,parseFloat(novo)||0));
+  q('UPDATE metas SET progresso_pct='+val+' WHERE id='+id);
+  saveDB();renderMetas();renderDashboard();toast('📊 Progresso: '+val+'%');
+}
+
+// ── SESSÕES ──
+function renderSessoes() {
+  if(!PAC_ID)return;
+  const rows=q('SELECT * FROM sessoes WHERE paciente_id='+PAC_ID+' ORDER BY data_hora DESC');
+  $('sess-sub').textContent=PAC_NOME+' · '+rows.length+' sessão(ões)';
+  const tC={fonoaudiologia:'t',terapia_ocupacional:'p',psicologia:'a',aba:'c',fisioterapia:'s',neuropediatria:'t'};
+  const hE={otimo:'😄',bom:'😊',regular:'😐',agitado:'😤',recusou:'😢'};
+  $('sess-list').innerHTML=rows.map(s=>`
+    <div class="card" style="margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px">
+        <span class="tag ${tC[s.tipo]||'t'}">${esc(s.tipo.replace('_',' '))}</span>
+        <span style="font-size:11px;color:var(--ink-soft)">${fDT(s.data_hora)}</span>
+        ${s.profissional?`<span style="font-size:11px;color:var(--ink-soft)">· ${esc(s.profissional)}</span>`:''}
+        <span class="tag k" style="margin-left:auto">${esc(s.local_sessao||'—')}</span>
+        <button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar('Excluir esta sessão?',()=>{q('DELETE FROM sessoes WHERE id=${s.id}');saveDB();renderSessoes();renderDashboard();toast('🗑️ Sessão excluída.')})">🗑️</button>
+      </div>
+      ${s.metas_trabalhadas?`<div style="font-size:11px;font-weight:600;color:var(--ink-soft);margin-bottom:3px">Metas: ${esc(s.metas_trabalhadas)}</div>`:''}
+      <div style="font-size:12px;line-height:1.5">${esc(s.resumo)}</div>
+      <div style="display:flex;gap:12px;margin-top:7px;font-size:12px">
+        <span>${hE[s.humor]||''}  ${esc(s.humor||'—')}</span>
+        <span>⭐ Engajamento ${s.engajamento}/5</span>
+      </div>
+    </div>`).join('')||'<div class="empty"><div class="empty-ic">🏥</div><div class="empty-t">Nenhuma sessão registrada</div></div>';
+}
+
+function salvarSessao() {
+  const res=$('ms-res').value.trim(), dt=$('ms-dt').value;
+  const err=$('ms-err');
+  if(!res){mostrarErr(err,'Resumo é obrigatório.');return;}
+  if(!dt){mostrarErr(err,'Data é obrigatória.');return;}
+  err.style.display='none';
+  const d={paciente_id:PAC_ID,tipo:$('ms-tipo').value,data_hora:dt,local_sessao:$('ms-loc').value,profissional:$('ms-prof').value.trim(),metas_trabalhadas:$('ms-metas').value.trim(),resumo:res,humor:$('ms-humor').value,engajamento:parseInt($('ms-eng').value),criado_em:now()};
+  alasql('INSERT INTO sessoes VALUES ?',[d]);
+  fecharMo('sessao');saveDB();renderSessoes();renderDashboard();toast('✅ Sessão registrada!');
+}
+
+// ── DIÁRIO ──
+function renderDiario() {
+  if(!PAC_ID)return;
+  const rows=q('SELECT * FROM diarios WHERE paciente_id='+PAC_ID+' ORDER BY data DESC');
+  $('diar-sub').textContent=PAC_NOME+' · '+rows.length+' registro(s)';
+  const hE={muito_bom:'😄',bom:'😊',neutro:'😐',ansioso:'😰',agitado:'😤',triste:'😢'};
+  const sE={otimo:'😴',bom:'😊',fragmentado:'😐',ruim:'😤'};
+  $('diar-list').innerHTML=rows.map(d=>`
+    <div class="card" style="margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
+        <strong style="font-size:13px">${fD(d.data)}</strong>
+        ${d.registrado_por?`<span style="font-size:11px;color:var(--ink-soft)">por ${esc(d.registrado_por)}</span>`:''}
+        <span class="tag ${d.houve_crise?'c':'s'}" style="margin-left:auto">${d.houve_crise?'⚡ Crise':'Sem crise'}</span>
+        <button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar('Excluir registro de ${fD(d.data)}?',()=>{q('DELETE FROM diarios WHERE id=${d.id}');saveDB();renderDiario();renderDashboard();toast('🗑️ Registro excluído.')})">🗑️</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;font-size:12px">
+        ${[['Sono',sE[d.sono_qualidade]||'😴',d.sono_horas+'h'],['Humor',hE[d.humor]||'😐',d.humor||'—'],['Alimentação','🍽️',d.alimentacao||'—'],['Evacuações','🚽',d.evacuacoes??'—']].map(([lb,ic,vl])=>`<div style="padding:7px;background:var(--paper-warm);border-radius:7px;text-align:center"><div style="font-size:15px">${ic}</div><div style="font-weight:600;font-size:11px">${esc(String(vl))}</div><div style="font-size:10px;opacity:.45">${lb}</div></div>`).join('')}
+      </div>
+      ${d.descricao_crise?`<div class="al d" style="margin-top:7px;font-size:11px">⚡ <strong>Crise:</strong> ${esc(d.descricao_crise)}</div>`:''}
+      ${d.obs?`<div style="font-size:11px;color:var(--ink-soft);margin-top:5px;padding:7px;background:var(--paper-warm);border-radius:7px">${esc(d.obs)}</div>`:''}
+    </div>`).join('')||'<div class="empty"><div class="empty-ic">📔</div><div class="empty-t">Nenhum registro no diário</div></div>';
+}
+
+function salvarDiario() {
+  const dt=$('md-dt').value;
+  if(!dt){toast('⚠️ Data é obrigatória.');return;}
+  const d={paciente_id:PAC_ID,data:dt,registrado_por:$('md-resp').value.trim(),sono_horas:parseFloat($('md-sono').value)||0,sono_qualidade:$('md-sq').value,alimentacao:$('md-al').value,humor:$('md-hu').value,houve_crise:parseInt($('md-cr').value),descricao_crise:$('md-crd').value.trim(),evacuacoes:parseInt($('md-ev').value)||0,obs:$('md-obs').value.trim(),criado_em:now()};
+  alasql('INSERT INTO diarios VALUES ?',[d]);
+  fecharMo('diario');saveDB();renderDiario();renderDashboard();toast('✅ Registro salvo!');
+}
+
+// ── COMPORTAMENTOS ──
+function renderComportamentos() {
+  if(!PAC_ID)return;
+  const rows=q('SELECT * FROM comportamentos WHERE paciente_id='+PAC_ID+' ORDER BY data_hora DESC');
+  $('comp-sub').textContent=PAC_NOME+' · '+rows.length+' ocorrência(s)';
+  const iC={'1':'s','2':'t','3':'a','4':'c','5':'c'};
+  $('comp-list').innerHTML=rows.map(c=>`
+    <div class="card" style="margin-bottom:9px;border-left:4px solid var(--coral)">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px">
+        <strong style="font-size:13px">${esc(c.nome)}</strong>
+        <span class="tag ${iC[c.intensidade]||'a'}">Intensidade ${c.intensidade}/5</span>
+        <span style="font-size:11px;color:var(--ink-soft);margin-left:auto">${fDT(c.data_hora)}</span>
+        <span class="tag k">${esc(c.contexto||'—')}</span>
+        <button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar('Excluir este registro?',()=>{q('DELETE FROM comportamentos WHERE id=${c.id}');saveDB();renderComportamentos();renderDashboard();toast('🗑️ Excluído.')})">🗑️</button>
+      </div>
+      ${c.duracao_min||c.frequencia?`<div style="font-size:11px;color:var(--ink-soft);margin-bottom:5px">${c.duracao_min?'⏱️ '+c.duracao_min+' min  ':''}${c.frequencia?'🔢 '+c.frequencia+'x':''}</div>`:''}
+      ${c.antecedente?`<div style="font-size:11px;padding:5px 9px;background:var(--amber-l);border-radius:6px;margin-bottom:3px"><strong>A:</strong> ${esc(c.antecedente)}</div>`:''}
+      ${c.consequencia?`<div style="font-size:11px;padding:5px 9px;background:var(--teal-xl);border-radius:6px"><strong>C:</strong> ${esc(c.consequencia)}</div>`:''}
+      ${c.obs?`<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">${esc(c.obs)}</div>`:''}
+    </div>`).join('')||'<div class="empty"><div class="empty-ic">📈</div><div class="empty-t">Nenhum comportamento registrado</div></div>';
+}
+
+function salvarComportamento() {
+  const nome=$('mc-nome').value.trim(), dt=$('mc-dt').value;
+  if(!nome||!dt){toast('⚠️ Nome e data são obrigatórios.');return;}
+  const d={paciente_id:PAC_ID,nome,data_hora:dt,contexto:$('mc-ctx').value,intensidade:parseInt($('mc-int').value),duracao_min:parseFloat($('mc-dur').value)||0,frequencia:parseInt($('mc-freq').value)||1,antecedente:$('mc-ant').value.trim(),consequencia:$('mc-cons').value.trim(),obs:$('mc-obs').value.trim(),criado_em:now()};
+  alasql('INSERT INTO comportamentos VALUES ?',[d]);
+  fecharMo('comportamento');saveDB();renderComportamentos();renderDashboard();toast('✅ Comportamento registrado!');
+}
+
+// ── MEDICAÇÕES ──
+function renderMedicacoes() {
+  if(!PAC_ID)return;
+  const rows=q('SELECT * FROM medicacoes WHERE paciente_id='+PAC_ID+' ORDER BY status, nome_generico');
+  $('med-sub').textContent=PAC_NOME+' · '+rows.length+' medicação(ões)';
+  $('med-list').innerHTML=rows.map(m=>`
+    <div class="card" style="margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+        <div class="med-ic">💊</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${esc(m.nome_generico)}${m.nome_comercial?` <span style="font-weight:400;color:var(--ink-soft)">(${esc(m.nome_comercial)})</span>`:''}</div>
+          <div style="font-size:11px;color:var(--ink-soft)">${esc(m.dose)} · ${esc(m.via)} · ${esc(m.horarios||'—')}</div>
+          ${m.motivo?`<div style="font-size:11px;opacity:.65">📋 ${esc(m.motivo)}</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <span class="tag ${m.status==='ativo'?'t':'k'}">${m.status==='ativo'?'✅ Ativo':'⏸ Encerrado'}</span>
+          <div style="font-size:10px;color:var(--ink-soft);margin-top:2px">Desde ${fD(m.data_inicio)}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-s btn-sm" onclick="editarMed(${m.id})" title="Editar">✏️</button>
+          <button class="btn btn-s btn-sm" onclick="toggleMed(${m.id},'${m.status}')" title="${m.status==='ativo'?'Encerrar':'Reativar'}">${m.status==='ativo'?'⏸':'▶'}</button>
+          <button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar('Excluir <strong>${esc(m.nome_generico)}</strong>?',()=>{q('DELETE FROM medicacoes WHERE id=${m.id}');saveDB();renderMedicacoes();renderProntuario();toast('🗑️ Medicação excluída.')})">🗑️</button>
+        </div>
+      </div>
+      ${m.efeitos_colaterais?`<div class="al w" style="margin-top:7px;font-size:11px">⚠️ Efeitos: ${esc(m.efeitos_colaterais)}</div>`:''}
+    </div>`).join('')||'<div class="empty"><div class="empty-ic">💊</div><div class="empty-t">Nenhuma medicação cadastrada</div></div>';
+}
+
+function salvarMedicacao() {
+  const id=$('mm-id').value, nome=$('mm-nome').value.trim(), dose=$('mm-dose').value.trim(), ini2=$('mm-ini').value;
+  const err=$('mm-err');
+  if(!nome){mostrarErr(err,'Nome é obrigatório.');return;}
+  if(!dose){mostrarErr(err,'Dose é obrigatória.');return;}
+  if(!ini2){mostrarErr(err,'Data de início é obrigatória.');return;}
+  err.style.display='none';
+  const d={nome_generico:nome,nome_comercial:$('mm-com').value.trim(),dose,via:$('mm-via').value,horarios:$('mm-hor').value.trim(),data_inicio:ini2,motivo:$('mm-mot').value.trim(),efeitos_colaterais:$('mm-ef').value.trim(),status:'ativo'};
+  if(id){const sets=Object.entries(d).map(([k,v])=>k+"='"+String(v).replace(/'/g,"''")+"'").join(',');q('UPDATE medicacoes SET '+sets+' WHERE id='+id);toast('✅ Medicação atualizada!');}
+  else{d.paciente_id=PAC_ID;d.criado_em=now();alasql('INSERT INTO medicacoes VALUES ?',[d]);toast('✅ Medicação adicionada!');}
+  fecharMo('medicacao');saveDB();renderMedicacoes();renderProntuario();
+}
+
+function editarMed(id) {
+  const m=q1('SELECT * FROM medicacoes WHERE id='+id);if(!m)return;
+  $('mm-id').value=m.id;$('mm-title').textContent='Editar Medicação';
+  $('mm-nome').value=m.nome_generico||'';$('mm-com').value=m.nome_comercial||'';$('mm-dose').value=m.dose||'';
+  $('mm-via').value=m.via||'oral';$('mm-hor').value=m.horarios||'';$('mm-ini').value=m.data_inicio||'';
+  $('mm-mot').value=m.motivo||'';$('mm-ef').value=m.efeitos_colaterais||'';$('mm-err').style.display='none';
+  abrirMo('medicacao');
+}
+
+function toggleMed(id,status) {
+  const novo=status==='ativo'?'encerrado':'ativo';
+  q("UPDATE medicacoes SET status='"+novo+"' WHERE id="+id);
+  saveDB();renderMedicacoes();renderProntuario();
+  toast(novo==='ativo'?'▶ Reativada.':'⏸ Encerrada.');
+}
+
+// ── CONSULTAS ──
+function salvarConsulta() {
+  const cond=$('mc2-cond').value.trim(), dt=$('mc2-dt').value;
+  if(!cond||!dt){toast('⚠️ Data e condutas são obrigatórias.');return;}
+  const d={paciente_id:PAC_ID,profissional:$('mc2-prof').value.trim(),data_hora:dt,tipo:$('mc2-tp').value,resumo:$('mc2-res').value.trim(),condutas:cond,criado_em:now()};
+  alasql('INSERT INTO consultas VALUES ?',[d]);
+  fecharMo('consulta');saveDB();renderProntuario();toast('✅ Consulta registrada!');
+}
+
+// ── AGENDA ──
+function renderAgenda() {
+  if(!PAC_ID)return;
+  const rows=q('SELECT * FROM agenda WHERE paciente_id='+PAC_ID+' ORDER BY data_hora');
+  $('ag-sub').textContent=PAC_NOME+' · '+rows.length+' evento(s)';
+  const meses=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+  const sC={agendado:'a',confirmado:'t',cancelado:'k'};
+  $('ag-list').innerHTML=rows.map(e=>`
+    <div class="card" style="margin-bottom:9px;display:flex;gap:12px;align-items:flex-start">
+      <div style="min-width:42px;text-align:center;background:var(--paper-warm);border-radius:9px;padding:7px 5px;flex-shrink:0">
+        <div style="font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:var(--teal-dark)">${e.data_hora.slice(8,10)}</div>
+        <div style="font-size:9px;color:var(--ink-soft);text-transform:uppercase">${meses[parseInt(e.data_hora.slice(5,7))-1]||''}</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${esc(e.titulo)}</div>
+        <div style="font-size:11px;color:var(--ink-soft)">${e.data_hora.slice(11,16)}${e.local_evento?' · '+esc(e.local_evento):''}${e.profissional?' · '+esc(e.profissional):''}</div>
+        ${e.obs?`<div style="font-size:11px;margin-top:3px;color:var(--ink-soft)">${esc(e.obs)}</div>`:''}
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+        <span class="tag ${sC[e.status]||'k'}">${esc(e.status)}</span>
+        <button class="btn btn-sm" style="background:var(--coral-l);color:#8b3a22" onclick="confirmar('Excluir evento <strong>${esc(e.titulo)}</strong>?',()=>{q('DELETE FROM agenda WHERE id=${e.id}');saveDB();renderAgenda();toast('🗑️ Evento excluído.')})">🗑️</button>
+      </div>
+    </div>`).join('')||'<div class="empty"><div class="empty-ic">📅</div><div class="empty-t">Nenhum evento agendado</div></div>';
+}
+
+function salvarEvento() {
+  const tit=$('mev-tit').value.trim(), dt=$('mev-dt').value;
+  if(!tit||!dt){toast('⚠️ Título e data são obrigatórios.');return;}
+  const d={paciente_id:PAC_ID,titulo:tit,tipo:$('mev-tp').value,data_hora:dt,local_evento:$('mev-loc').value.trim(),profissional:$('mev-prof').value.trim(),obs:$('mev-obs').value.trim(),status:'agendado',criado_em:now()};
+  alasql('INSERT INTO agenda VALUES ?',[d]);
+  fecharMo('evento');saveDB();renderAgenda();toast('✅ Evento adicionado!');
+}
+
+// ── SQL CONSOLE ──
+function renderSQL() {
+  $('sql-tbls').innerHTML=TABS.map(t=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="font-family:'Courier New',monospace;font-weight:600;color:var(--teal-dark)">${t}</span><button class="btn btn-g btn-sm" style="margin-left:auto;font-size:10px" onclick="sqlQ('SELECT * FROM ${t}')">SELECT *</button></div>`).join('');
+  $('sql-stats').innerHTML=TABS.map(t=>{try{const c=q('SELECT COUNT(*) AS c FROM '+t)[0].c;return`<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px"><span style="font-family:'Courier New',monospace;color:var(--ink-soft)">${t}</span><span style="font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--teal-dark)">${c}</span></div>`;}catch(e){return'';}}).join('');
+}
+
+function sqlQ(sql){$('sql-in').value=sql;runSQL();}
+
+function runSQL() {
+  const sql=$('sql-in').value.trim(), res=$('sql-res');
+  if(!sql)return;
+  try {
+    const r=alasql(sql);
+    if(r===undefined||r===null){res.innerHTML='<div class="sql-ok">✅ Executado.</div>';saveDB();renderSQL();return;}
+    if(typeof r==='number'){res.innerHTML=`<div class="sql-ok">✅ ${r} linha(s) afetada(s).</div>`;saveDB();renderSQL();return;}
+    if(!Array.isArray(r)||!r.length){res.innerHTML='<div class="sql-rc">0 linhas retornadas.</div>';return;}
+    const cols=Object.keys(r[0]);
+    res.innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${r.map(row=>`<tr>${cols.map(c=>`<td>${esc(String(row[c]??'NULL'))}</td>`).join('')}</tr>`).join('')}</tbody></table><div class="sql-rc">${r.length} linha(s)</div>`;
+    if(/INSERT|UPDATE|DELETE/i.test(sql)){saveDB();renderSQL();}
+  } catch(e){res.innerHTML=`<div class="sql-err">❌ ${esc(e.message)}</div>`;}
+}
+
+// ── BUSCA GLOBAL ──
+function buscarGlobal(v) {
+  const drop=$('srch-drop');
+  if(!v||v.length<2){drop.style.display='none';return;}
+  const rows=q("SELECT id,nome,diagnostico,responsavel FROM pacientes WHERE LOWER(nome) LIKE '%"+v.toLowerCase()+"%' OR LOWER(responsavel) LIKE '%"+v.toLowerCase()+"%' LIMIT 5");
+  if(!rows.length){drop.style.display='none';return;}
+  drop.style.display='block';
+  drop.innerHTML=rows.map(p=>`<div onclick="selPac(${p.id});$('srch').value='';$('srch-drop').style.display='none'" style="padding:9px 13px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:9px;align-items:center" onmouseenter="this.style.background='var(--teal-xl)'" onmouseleave="this.style.background='#fff'">
+    <div style="width:26px;height:26px;border-radius:7px;background:${avBg(p.nome)};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:10px;font-family:'Fraunces',serif;flex-shrink:0">${ini(p.nome)}</div>
+    <div><div style="font-size:12px;font-weight:600">${esc(p.nome)}</div><div style="font-size:10px;color:var(--ink-soft)">${esc(p.diagnostico||'—')}</div></div>
+  </div>`).join('');
+}
+document.addEventListener('click',e=>{if(!$('srch').contains(e.target)&&!$('srch-drop').contains(e.target))$('srch-drop').style.display='none';});
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter'&&document.activeElement.id==='sql-in')runSQL();});
+
+// ── BOOT ──
+try {
+  ldMsg('Iniciando AlaSQL…');
+  initDB();
+  ldMsg('Carregando interface…');
+  setTimeout(()=>{
+    $('ld').style.opacity='0';
+    setTimeout(()=>{$('ld').style.display='none';$('app').style.opacity='1';},400);
+    renderPacientes();
+    setPac(1);
+    renderDashboard();
+  }, 300);
+} catch(e) {
+  $('ld-msg').textContent = '❌ Erro: ' + e.message;
+  console.error(e);
+}
+</script>
+</body>
+</html>
